@@ -7,6 +7,21 @@
 
 import SwiftUI
 import Foundation
+import SwiftUINavigation
+
+/// Navigation
+/// 1. import poiint free swifitui navigation
+/// 2. create a destination enum
+/// 3. add cases too the enum that represent a destinatiino
+/// 4. you can add a associated value which represents the state to power your destination
+/// 5. you can use this enum for all navigation apis (sheet, alert, fullscreen, navigatinoDestination, etc)
+/// 6. all the apis look identical
+/// 7. naviigationo is now a single sorce of truth, one variable to rule them all
+/// 8. deep link
+///
+///
+/// Light/DarkMode
+///   - in the simulator you can use a keybooard command to switch b/w ligh and dark mode
 
 
 final class ViewModel: ObservableObject {
@@ -23,7 +38,23 @@ final class ViewModel: ObservableObject {
     }
   }
   
-
+  @Published var destination: Destination? = nil
+  
+  init(
+    billAmount: Double = 10.0,
+    numberOfPeople: Int = 2,
+    manualTip: Double = 0,
+    tipType: TipType = .twentyFive,
+    destination: Destination? = nil
+  ) {
+    self.billAmount = billAmount
+    self.numberOfPeople = numberOfPeople
+    self.manualTip = manualTip
+    self.tipType = tipType
+    self.destination = destination
+  }
+  
+  
   
   /**
    Derived attribute
@@ -36,6 +67,30 @@ final class ViewModel: ObservableObject {
     tipType.totalTip(billAmount)
   }
   
+  func tipTypeOptionSelected(_ tipType: TipType) {
+    self.tipType = tipType
+    if case .custom(tip: _) = tipType {
+      destination = .other
+    }
+  }
+  
+  func doneButtonTapped() {
+    destination = nil
+  }
+  
+  func customTipSubmitKeyPressed() {
+    destination = nil
+  }
+  
+}
+
+extension ViewModel {
+  enum Destination {
+    case alert
+    case sheetJesse
+    case sheetNick
+    case other
+  }
 }
 
 struct ContentView2: View {
@@ -55,14 +110,17 @@ struct ContentView2: View {
               Text("\($0) people")
             }
           }
+        } header: {
+          Text("Bill Amount")
         }
         
         Section {
-          NavigationLink(destination: CustomTipView(vm: vm)) {
-          Picker("Tip percentage", selection: $vm.tipType) {
-              ForEach(TipType.allCases, id: \.self) {
-                Text($0.pickerString)
-              }
+          Picker("Tip percentage", selection: .init(
+            get: { vm.tipType },
+            set: { vm.tipTypeOptionSelected($0) })
+          ) {
+            ForEach(TipType.allCases, id: \.self) {
+              Text($0.pickerString)
             }
           }
           .pickerStyle(.segmented)
@@ -84,15 +142,21 @@ struct ContentView2: View {
         }
         
         .navigationTitle("WeSplit")
-        .toolbar {
-          ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            
-            Button("Done") {
-              amountIsFocused = false
-            }
+      }
+      .toolbar {
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          
+          Button("Done") {
+            amountIsFocused = false
           }
         }
+      }
+      .navigationDestination(
+        unwrapping: $vm.destination,
+        case: /ViewModel.Destination.other
+      ) { _ in
+        CustomTipView(vm: vm)
       }
     }
   }
@@ -100,8 +164,8 @@ struct ContentView2: View {
   struct CustomTipView: View {
     @ObservedObject var vm: ViewModel
     @FocusState private var amountIsFocused: Bool
-
-
+    
+    
     // TODO: kdeda
     // on enter keyboard navigate away from here
     var body: some View {
@@ -110,6 +174,7 @@ struct ContentView2: View {
           Section {
             TextField("Amount", value: $vm.manualTip, format:
                 .currency(code: Locale.current.currency?.identifier ?? "USD"))
+            .onSubmit(vm.customTipSubmitKeyPressed)
             .keyboardType(.decimalPad)
             .focused($amountIsFocused)
           }
@@ -121,17 +186,17 @@ struct ContentView2: View {
           Spacer()
           
           Button("Done") {
-            amountIsFocused = false
+            vm.doneButtonTapped()
           }
         }
       }
     }
   }
-                         
-                         
+  
+  
   struct ContentView2_Previews: PreviewProvider {
     static var previews: some View {
-      ContentView2()
+      ContentView2(vm: .init(destination: nil))
       CustomTipView(vm: ViewModel())
     }
   }
