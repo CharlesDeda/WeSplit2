@@ -22,6 +22,7 @@ import SwiftUINavigation
 ///
 /// Light/DarkMode
 ///   - in the simulator you can use a keybooard command to switch b/w ligh and dark mode
+///
 
 
 final class ViewModel: ObservableObject {
@@ -196,6 +197,7 @@ struct ContentView2: View {
   
   struct ContentView2_Previews: PreviewProvider {
     static var previews: some View {
+      ContentView2().preferredColorScheme(.dark)
       ContentView2(vm: .init(destination: nil))
       CustomTipView(vm: ViewModel())
     }
